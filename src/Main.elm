@@ -13,20 +13,45 @@ import Html exposing (Html)
 ---- MODEL ----
 
 
+type Change
+    = NotCalculated
+    | Unchanged
+    | Wetter
+    | Drier
+
+
 type alias Model =
-    { temperatureInput : String
-    , humidityInput : String
-    , temperatureError : Maybe String
-    , temperature : Maybe Int
+    { outsideTemperatureInput : String
+    , outsideTemperatureError : Maybe String
+    , outsideTemperature : Maybe Int
+    , outsideHumidityInput : String
+    , outsideHumidityError : Maybe String
+    , outsideHumidity : Maybe Int
+    , insideTemperatureInput : String
+    , insideTemperatureError : Maybe String
+    , insideTemperature : Maybe Int
+    , insideHumidityInput : String
+    , insideHumidityError : Maybe String
+    , insideHumidity : Maybe Int
+    , change : Change
     }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { temperatureInput = ""
-      , humidityInput = ""
-      , temperatureError = Nothing
-      , temperature = Nothing
+    ( { outsideTemperatureInput = ""
+      , outsideTemperatureError = Nothing
+      , outsideTemperature = Nothing
+      , outsideHumidityInput = ""
+      , outsideHumidityError = Nothing
+      , outsideHumidity = Nothing
+      , insideTemperatureInput = ""
+      , insideTemperatureError = Nothing
+      , insideTemperature = Nothing
+      , insideHumidityInput = ""
+      , insideHumidityError = Nothing
+      , insideHumidity = Nothing
+      , change = NotCalculated
       }
     , Cmd.none
     )
@@ -37,30 +62,115 @@ init =
 
 
 type Msg
-    = TemperatureInput String
-    | HumidityInput String
+    = OutsideTemperatureInput String
+    | OutsideHumidityInput String
+    | InsideTemperatureInput String
+    | InsideHumidityInput String
+
+
+validateAndParseInt : String -> ( Maybe String, Maybe Int )
+validateAndParseInt input =
+    let
+        parsedInput =
+            String.toInt input
+    in
+    case parsedInput of
+        Nothing ->
+            ( Just "Bitte nur ganze Zahlen eingeben", Nothing )
+
+        Just num ->
+            ( Nothing, Just num )
+
+
+calculateResultInner : Int -> Int -> Int -> Int -> Change
+calculateResultInner outsideTemperature outsideHumidity insideTemperature insideHumidity =
+    let
+        outsidePower =
+            (17.67 * toFloat outsideTemperature) / (toFloat outsideTemperature + 243.5)
+
+        outsideAbsoluteHumidity =
+            (6.112 * (e ^ outsidePower) * toFloat outsideHumidity * 2.1674) / (273.15 + toFloat outsideTemperature)
+
+        insidePower =
+            (17.67 * toFloat insideTemperature) / (toFloat insideTemperature + 243.5)
+
+        insideAbsoluteHumidity =
+            (6.112 * (e ^ insidePower) * toFloat insideHumidity * 2.1674) / (273.15 + toFloat insideTemperature)
+    in
+    if outsideAbsoluteHumidity == insideAbsoluteHumidity then
+        Unchanged
+
+    else if outsideAbsoluteHumidity < insideAbsoluteHumidity then
+        Drier
+
+    else
+        Wetter
+
+
+calculateResult : Model -> Change
+calculateResult model =
+    Maybe.withDefault NotCalculated <|
+        Maybe.map4 calculateResultInner
+            model.outsideTemperature
+            model.outsideHumidity
+            model.insideTemperature
+            model.insideHumidity
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        TemperatureInput string ->
+        OutsideTemperatureInput string ->
             let
-                parsedInput =
-                    String.toInt string
+                ( error, parsed ) =
+                    validateAndParseInt string
 
                 newModel =
-                    case parsedInput of
-                        Nothing ->
-                            { model | temperatureError = Just "Bitte nur ganze Zahlen eingeben", temperatureInput = string }
+                    { model | outsideTemperatureInput = string, outsideTemperatureError = error, outsideTemperature = parsed }
 
-                        Just num ->
-                            { model | temperatureError = Nothing, temperatureInput = string, temperature = Just num }
+                calculatedResult =
+                    calculateResult newModel
             in
-            ( newModel, Cmd.none )
+            ( { newModel | change = calculatedResult }, Cmd.none )
 
-        HumidityInput string ->
-            ( model, Cmd.none )
+        OutsideHumidityInput string ->
+            let
+                ( error, parsed ) =
+                    validateAndParseInt string
+
+                newModel =
+                    { model | outsideHumidityInput = string, outsideHumidityError = error, outsideHumidity = parsed }
+
+                calculatedResult =
+                    calculateResult newModel
+            in
+            ( { newModel | change = calculatedResult }, Cmd.none )
+
+        InsideTemperatureInput string ->
+            let
+                ( error, parsed ) =
+                    validateAndParseInt string
+
+                newModel =
+                    { model | insideTemperatureInput = string, insideTemperatureError = error, insideTemperature = parsed }
+
+                calculatedResult =
+                    calculateResult newModel
+            in
+            ( { newModel | change = calculatedResult }, Cmd.none )
+
+        InsideHumidityInput string ->
+            let
+                ( error, parsed ) =
+                    validateAndParseInt string
+
+                newModel =
+                    { model | insideHumidityInput = string, insideHumidityError = error, insideHumidity = parsed }
+
+                calculatedResult =
+                    calculateResult newModel
+            in
+            ( { newModel | change = calculatedResult }, Cmd.none )
 
 
 
@@ -76,7 +186,10 @@ view model =
     Element.layout [] <|
         column []
             [ titleBar model
-            , inputs model
+            , outsideInputs model
+            , insideInputs model
+            , bridge
+            , results model.change
             ]
 
 
@@ -88,22 +201,73 @@ titleBar model =
         ]
 
 
-inputs model =
+bridge : Element Msg
+bridge =
+    row [ width fill, centerX ]
+        [ text "Bild Pfeil nach unten"
+        , text "Fenster öffnen"
+        ]
+
+
+results : Change -> Element Msg
+results change =
+    let
+        notCalculated =
+            [ text "Not Calculated" ]
+
+        unchanged =
+            [ text "Unchanged" ]
+
+        getsWetter =
+            [ text "Feuchter Bild"
+            , text "Feuchter Text"
+            ]
+
+        getsDrier =
+            [ text "Trockener Bild"
+            , text "Trockener Text"
+            ]
+
+        shownView =
+            case change of
+                NotCalculated ->
+                    notCalculated
+
+                Unchanged ->
+                    unchanged
+
+                Wetter ->
+                    getsWetter
+
+                Drier ->
+                    getsDrier
+    in
+    row [ width fill, centerX ]
+        shownView
+
+
+outsideInputs model =
     column []
-        [ text "TODO: image [] { src = \"x\", description = \"y\" }"
-        , numberInput TemperatureInput model.temperatureInput "Temperatur" "°C" model.temperatureError
+        [ text "TODO: image [] { src = \"imageUrl\", description = \"imageDescription\" }"
+        , numberInput OutsideTemperatureInput model.outsideTemperatureInput "Temperatur" "°C" model.outsideTemperatureError
+        , numberInput OutsideHumidityInput model.outsideHumidityInput "Rel. Luftfeuchtigkeit" "% RH" model.outsideHumidityError
+        ]
+
+
+insideInputs model =
+    column []
+        [ text "TODO: image [] { src = \"imageUrl\", description = \"imageDescription\" }"
+        , numberInput InsideTemperatureInput model.insideTemperatureInput "Temperatur" "°C" model.insideTemperatureError
+        , numberInput InsideHumidityInput model.insideHumidityInput "Rel. Luftfeuchtigkeit" "% RH" model.insideHumidityError
         ]
 
 
 numberInput onChange currentValue placeholderText label error =
     let
         errorText =
-            case error of
-                Nothing ->
-                    none
-
-                Just e ->
-                    el [ Font.color red ] (text e)
+            el [ Font.color red ] <|
+                Maybe.withDefault none <|
+                    Maybe.map text error
     in
     column []
         [ errorText
