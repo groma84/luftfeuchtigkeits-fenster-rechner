@@ -23,16 +23,16 @@ type Change
 type alias Model =
     { outsideTemperatureInput : String
     , outsideTemperatureError : Maybe String
-    , outsideTemperature : Maybe Int
+    , outsideTemperature : Maybe Float
     , outsideHumidityInput : String
     , outsideHumidityError : Maybe String
-    , outsideHumidity : Maybe Int
+    , outsideHumidity : Maybe Float
     , insideTemperatureInput : String
     , insideTemperatureError : Maybe String
-    , insideTemperature : Maybe Int
+    , insideTemperature : Maybe Float
     , insideHumidityInput : String
     , insideHumidityError : Maybe String
-    , insideHumidity : Maybe Int
+    , insideHumidity : Maybe Float
     , change : Change
     }
 
@@ -68,34 +68,34 @@ type Msg
     | InsideHumidityInput String
 
 
-validateAndParseInt : String -> ( Maybe String, Maybe Int )
-validateAndParseInt input =
+validateAndParseFloat : String -> ( Maybe String, Maybe Float )
+validateAndParseFloat input =
     let
         parsedInput =
-            String.toInt input
+            String.toFloat input
     in
     case parsedInput of
         Nothing ->
-            ( Just "Bitte nur ganze Zahlen eingeben", Nothing )
+            ( Just "Bitte nur Zahlen mit einem . als Dezimaltrenner eingeben", Nothing )
 
         Just num ->
             ( Nothing, Just num )
 
 
-calculateResultInner : Int -> Int -> Int -> Int -> Change
+calculateResultInner : Float -> Float -> Float -> Float -> Change
 calculateResultInner outsideTemperature outsideHumidity insideTemperature insideHumidity =
     let
-        outsidePower =
-            (17.67 * toFloat outsideTemperature) / (toFloat outsideTemperature + 243.5)
+        calculatePower temp =
+            (17.67 * temp) / (temp + 243.5)
+
+        calculateAbsoluteHumidity power humidity temperature =
+            (6.112 * (e ^ power) * humidity * 2.1674) / (273.15 + temperature)
 
         outsideAbsoluteHumidity =
-            (6.112 * (e ^ outsidePower) * toFloat outsideHumidity * 2.1674) / (273.15 + toFloat outsideTemperature)
-
-        insidePower =
-            (17.67 * toFloat insideTemperature) / (toFloat insideTemperature + 243.5)
+            calculateAbsoluteHumidity (calculatePower outsideTemperature) outsideHumidity outsideTemperature
 
         insideAbsoluteHumidity =
-            (6.112 * (e ^ insidePower) * toFloat insideHumidity * 2.1674) / (273.15 + toFloat insideTemperature)
+            calculateAbsoluteHumidity (calculatePower insideTemperature) insideHumidity insideTemperature
     in
     if outsideAbsoluteHumidity == insideAbsoluteHumidity then
         Unchanged
@@ -123,7 +123,7 @@ update msg model =
         OutsideTemperatureInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseInt string
+                    validateAndParseFloat string
 
                 newModel =
                     { model | outsideTemperatureInput = string, outsideTemperatureError = error, outsideTemperature = parsed }
@@ -136,7 +136,7 @@ update msg model =
         OutsideHumidityInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseInt string
+                    validateAndParseFloat string
 
                 newModel =
                     { model | outsideHumidityInput = string, outsideHumidityError = error, outsideHumidity = parsed }
@@ -149,7 +149,7 @@ update msg model =
         InsideTemperatureInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseInt string
+                    validateAndParseFloat string
 
                 newModel =
                     { model | insideTemperatureInput = string, insideTemperatureError = error, insideTemperature = parsed }
@@ -162,7 +162,7 @@ update msg model =
         InsideHumidityInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseInt string
+                    validateAndParseFloat string
 
                 newModel =
                     { model | insideHumidityInput = string, insideHumidityError = error, insideHumidity = parsed }
