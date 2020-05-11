@@ -1,7 +1,8 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
-import Element exposing (Element, alignRight, centerX, centerY, column, el, fill, image, none, padding, rgb255, row, spacing, text, width, wrappedRow)
+import Colors as C
+import Element exposing (Element, alignRight, centerX, centerY, column, el, fill, height, image, maximum, minimum, none, padding, px, rgb255, row, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -42,11 +43,22 @@ type alias Model =
     , insideHumidityError : Maybe String
     , insideHumidity : Maybe Float
     , calcResult : CalcResult
+    , icons : Icons
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+type alias Icons =
+    { down_arrow : String
+    , dry : String
+    , inside : String
+    , opening_window : String
+    , outside : String
+    , wet : String
+    }
+
+
+init : Icons -> ( Model, Cmd Msg )
+init icons =
     ( { outsideTemperatureInput = ""
       , outsideTemperatureError = Nothing
       , outsideTemperature = Nothing
@@ -60,6 +72,7 @@ init =
       , insideHumidityError = Nothing
       , insideHumidity = Nothing
       , calcResult = { change = NotCalculated, insideAbsoluteHumidity = Nothing, outsideAbsoluteHumidity = Nothing }
+      , icons = icons
       }
     , Cmd.none
     )
@@ -195,17 +208,25 @@ update msg model =
 ---- VIEW ----
 
 
-red =
-    rgb255 255 0 0
+scaled : Int -> Float
+scaled =
+    Element.modular 16 1.25
 
 
 view : Model -> Html Msg
 view model =
-    Element.layout [] <|
-        column []
+    Element.layout
+        [ Font.size (round <| scaled 2)
+        , Font.family [ Font.sansSerif ]
+        , width (fill |> maximum 720 |> minimum 720)
+        ]
+    <|
+        column [ width fill ]
             [ titleBar model
-            , outsideInputs model
-            , insideInputs model
+            , wrappedRow [ width fill ]
+                [ outsideInputs model
+                , insideInputs model
+                ]
             , bridge
             , results model.calcResult.change
             ]
@@ -213,9 +234,15 @@ view model =
 
 titleBar : Model -> Element Msg
 titleBar model =
-    wrappedRow [ width fill, centerY, spacing 30 ]
-        [ el [ centerX ] (text "Luftfeuchtigkeit + Fenster öffnen?")
-        , el [ alignRight ] (text "Impressum")
+    wrappedRow
+        [ width fill
+        , centerY
+        , spacing 30
+        , height (scaled 6 |> round |> px)
+        , Background.color C.lightblue
+        ]
+        [ el [ centerX, Font.size (round <| scaled 3), Font.color C.darkblue ] (text "Luftfeuchtigkeit + Fenster öffnen?")
+        , el [ alignRight, Font.color C.darkblue ] (text "TODO Impressum")
         ]
 
 
@@ -269,28 +296,80 @@ absoluteValue value =
     el [] (Maybe.withDefault none <| Maybe.map text <| Maybe.map (Round.round 2) value)
 
 
+scaledToLength : Int -> Element.Length
+scaledToLength length =
+    scaled length |> round |> px
+
+
+outsideInputs : Model -> Element Msg
 outsideInputs model =
-    column []
-        [ text "TODO: image [] { src = \"imageUrl\", description = \"imageDescription\" }"
-        , numberInput OutsideTemperatureInput model.outsideTemperatureInput "Temperatur" "°C" model.outsideTemperatureError
-        , numberInput OutsideHumidityInput model.outsideHumidityInput "Rel. Luftfeuchtigkeit" "% RH" model.outsideHumidityError
-        , absoluteValue model.calcResult.outsideAbsoluteHumidity
-        ]
+    inputColumn
+        { iconUrl = model.icons.outside
+        , iconDescription = "Icon showing outside vegetation"
+        , onInputTemperature = OutsideTemperatureInput
+        , onInputHumidity = OutsideHumidityInput
+        , currentTemperatureInputValue = model.outsideTemperatureInput
+        , currentHumidityInputValue = model.outsideHumidityInput
+        , temperaturePlaceholderText = "Temperatur"
+        , humidityPlaceholderText = "Rel. Luftfeuchtigkeit"
+        , temperatureLabelText = "°C"
+        , humidityLabelText = "% RH"
+        , temperatureError = model.outsideTemperatureError
+        , humidityError = model.outsideHumidityError
+        , calculatedAbsoluteHumidity = model.calcResult.outsideAbsoluteHumidity
+        }
 
 
+insideInputs : Model -> Element Msg
 insideInputs model =
-    column []
-        [ text "TODO: image [] { src = \"imageUrl\", description = \"imageDescription\" }"
-        , numberInput InsideTemperatureInput model.insideTemperatureInput "Temperatur" "°C" model.insideTemperatureError
-        , numberInput InsideHumidityInput model.insideHumidityInput "Rel. Luftfeuchtigkeit" "% RH" model.insideHumidityError
-        , absoluteValue model.calcResult.insideAbsoluteHumidity
+    inputColumn
+        { iconUrl = model.icons.inside
+        , iconDescription = "Icon showing a house"
+        , onInputTemperature = InsideTemperatureInput
+        , onInputHumidity = InsideHumidityInput
+        , currentTemperatureInputValue = model.insideTemperatureInput
+        , currentHumidityInputValue = model.insideHumidityInput
+        , temperaturePlaceholderText = "Temperatur"
+        , humidityPlaceholderText = "Rel. Luftfeuchtigkeit"
+        , temperatureLabelText = "°C"
+        , humidityLabelText = "% RH"
+        , temperatureError = model.insideTemperatureError
+        , humidityError = model.insideHumidityError
+        , calculatedAbsoluteHumidity = model.calcResult.insideAbsoluteHumidity
+        }
+
+
+type alias InputConfig =
+    { iconUrl : String
+    , iconDescription : String
+    , onInputTemperature : String -> Msg
+    , onInputHumidity : String -> Msg
+    , currentTemperatureInputValue : String
+    , currentHumidityInputValue : String
+    , temperaturePlaceholderText : String
+    , humidityPlaceholderText : String
+    , temperatureLabelText : String
+    , humidityLabelText : String
+    , temperatureError : Maybe String
+    , humidityError : Maybe String
+    , calculatedAbsoluteHumidity : Maybe Float
+    }
+
+
+inputColumn : InputConfig -> Element Msg
+inputColumn c =
+    column [ width fill ]
+        [ image [ width <| scaledToLength 6, height <| scaledToLength 6, centerX ] { src = c.iconUrl, description = c.iconDescription }
+        , numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText c.temperatureError
+        , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText c.humidityError
+        , absoluteValue c.calculatedAbsoluteHumidity
         ]
 
 
 numberInput onChange currentValue placeholderText label error =
     let
         errorText =
-            el [ Font.color red ] <|
+            el [ Font.color C.red ] <|
                 Maybe.withDefault none <|
                     Maybe.map text error
     in
@@ -309,11 +388,11 @@ numberInput onChange currentValue placeholderText label error =
 ---- PROGRAM ----
 
 
-main : Program () Model Msg
+main : Program Icons Model Msg
 main =
     Browser.element
         { view = view
-        , init = \_ -> init
+        , init = init
         , update = update
         , subscriptions = always Sub.none
         }
