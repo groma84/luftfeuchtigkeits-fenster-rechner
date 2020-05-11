@@ -1,4 +1,0 @@
-- Impressum Popup
-- Design
-- Deployen
-- Blogpost schreiben

@@ -7,10 +7,18 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (Html)
+import Round
 
 
 
 ---- MODEL ----
+
+
+type alias CalcResult =
+    { change : Change
+    , outsideAbsoluteHumidity : Maybe Float
+    , insideAbsoluteHumidity : Maybe Float
+    }
 
 
 type Change
@@ -33,7 +41,7 @@ type alias Model =
     , insideHumidityInput : String
     , insideHumidityError : Maybe String
     , insideHumidity : Maybe Float
-    , change : Change
+    , calcResult : CalcResult
     }
 
 
@@ -51,7 +59,7 @@ init =
       , insideHumidityInput = ""
       , insideHumidityError = Nothing
       , insideHumidity = Nothing
-      , change = NotCalculated
+      , calcResult = { change = NotCalculated, insideAbsoluteHumidity = Nothing, outsideAbsoluteHumidity = Nothing }
       }
     , Cmd.none
     )
@@ -82,7 +90,7 @@ validateAndParseFloat input =
             ( Nothing, Just num )
 
 
-calculateResultInner : Float -> Float -> Float -> Float -> Change
+calculateResultInner : Float -> Float -> Float -> Float -> CalcResult
 calculateResultInner outsideTemperature outsideHumidity insideTemperature insideHumidity =
     let
         calculatePower temp =
@@ -96,20 +104,30 @@ calculateResultInner outsideTemperature outsideHumidity insideTemperature inside
 
         insideAbsoluteHumidity =
             calculateAbsoluteHumidity (calculatePower insideTemperature) insideHumidity insideTemperature
+
+        change =
+            if outsideAbsoluteHumidity == insideAbsoluteHumidity then
+                Unchanged
+
+            else if outsideAbsoluteHumidity < insideAbsoluteHumidity then
+                Drier
+
+            else
+                Wetter
     in
-    if outsideAbsoluteHumidity == insideAbsoluteHumidity then
-        Unchanged
-
-    else if outsideAbsoluteHumidity < insideAbsoluteHumidity then
-        Drier
-
-    else
-        Wetter
+    { change = change
+    , insideAbsoluteHumidity = Just <| insideAbsoluteHumidity
+    , outsideAbsoluteHumidity = Just <| outsideAbsoluteHumidity
+    }
 
 
-calculateResult : Model -> Change
+calculateResult : Model -> CalcResult
 calculateResult model =
-    Maybe.withDefault NotCalculated <|
+    let
+        notCalculated =
+            { change = NotCalculated, insideAbsoluteHumidity = Nothing, outsideAbsoluteHumidity = Nothing }
+    in
+    Maybe.withDefault notCalculated <|
         Maybe.map4 calculateResultInner
             model.outsideTemperature
             model.outsideHumidity
@@ -131,7 +149,7 @@ update msg model =
                 calculatedResult =
                     calculateResult newModel
             in
-            ( { newModel | change = calculatedResult }, Cmd.none )
+            ( { newModel | calcResult = calculatedResult }, Cmd.none )
 
         OutsideHumidityInput string ->
             let
@@ -144,7 +162,7 @@ update msg model =
                 calculatedResult =
                     calculateResult newModel
             in
-            ( { newModel | change = calculatedResult }, Cmd.none )
+            ( { newModel | calcResult = calculatedResult }, Cmd.none )
 
         InsideTemperatureInput string ->
             let
@@ -157,7 +175,7 @@ update msg model =
                 calculatedResult =
                     calculateResult newModel
             in
-            ( { newModel | change = calculatedResult }, Cmd.none )
+            ( { newModel | calcResult = calculatedResult }, Cmd.none )
 
         InsideHumidityInput string ->
             let
@@ -170,7 +188,7 @@ update msg model =
                 calculatedResult =
                     calculateResult newModel
             in
-            ( { newModel | change = calculatedResult }, Cmd.none )
+            ( { newModel | calcResult = calculatedResult }, Cmd.none )
 
 
 
@@ -189,7 +207,7 @@ view model =
             , outsideInputs model
             , insideInputs model
             , bridge
-            , results model.change
+            , results model.calcResult.change
             ]
 
 
@@ -246,11 +264,17 @@ results change =
         shownView
 
 
+absoluteValue : Maybe Float -> Element msg
+absoluteValue value =
+    el [] (Maybe.withDefault none <| Maybe.map text <| Maybe.map (Round.round 2) value)
+
+
 outsideInputs model =
     column []
         [ text "TODO: image [] { src = \"imageUrl\", description = \"imageDescription\" }"
         , numberInput OutsideTemperatureInput model.outsideTemperatureInput "Temperatur" "°C" model.outsideTemperatureError
         , numberInput OutsideHumidityInput model.outsideHumidityInput "Rel. Luftfeuchtigkeit" "% RH" model.outsideHumidityError
+        , absoluteValue model.calcResult.outsideAbsoluteHumidity
         ]
 
 
@@ -259,6 +283,7 @@ insideInputs model =
         [ text "TODO: image [] { src = \"imageUrl\", description = \"imageDescription\" }"
         , numberInput InsideTemperatureInput model.insideTemperatureInput "Temperatur" "°C" model.insideTemperatureError
         , numberInput InsideHumidityInput model.insideHumidityInput "Rel. Luftfeuchtigkeit" "% RH" model.insideHumidityError
+        , absoluteValue model.calcResult.insideAbsoluteHumidity
         ]
 
 
