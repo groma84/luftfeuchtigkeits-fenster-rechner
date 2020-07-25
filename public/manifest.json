@@ -1,6 +1,6 @@
 {
-  "short_name": "Elm App",
-  "name": "Create Elm App Sample",
+  "short_name": "Luftfeuchtigkeits-Rechner",
+  "name": "Luftfeuchtigkeits-Fenster-Öffnen-Rechner",
   "icons": [
     {
       "src": "favicon.ico",
