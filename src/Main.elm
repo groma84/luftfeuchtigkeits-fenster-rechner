@@ -2,13 +2,12 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Calc exposing (CalcResult, Change(..), calculateResult)
-import Colors as C
-import Element exposing (Element, alignRight, centerX, centerY, column, el, fill, height, image, maximum, minimum, none, px, row, spacing, text, width, wrappedRow)
-import Element.Background as Background
-import Element.Font as Font
-import Element.Input as Input
-import Html exposing (Html)
+import Html exposing (..)
+import Html.Attributes exposing (alt, placeholder, src, type_, value)
+import Html.Events exposing (onInput)
 import Round
+import Tachyons exposing (classes, tachyons)
+import Tachyons.Classes exposing (..)
 
 
 
@@ -149,53 +148,37 @@ update msg model =
 ---- VIEW ----
 
 
-scaled : Int -> Float
-scaled =
-    Element.modular 16 1.25
-
-
 view : Model -> Html Msg
 view model =
-    Element.layout
-        [ Font.size (round <| scaled 2)
-        , Font.family [ Font.sansSerif ]
-        , width (fill |> maximum 720 |> minimum 720)
-        ]
-    <|
-        column [ width fill ]
-            [ titleBar
-            , wrappedRow [ width fill ]
-                [ outsideInputs model
-                , insideInputs model
-                ]
-            , bridge
-            , results model.calcResult.change
+    div [ classes [ sans_serif ] ]
+        [ titleBar
+        , div []
+            [ outsideInputs model
+            , insideInputs model
             ]
+        , bridge
+        , results model.calcResult.change
+        ]
 
 
-titleBar : Element Msg
+titleBar : Html Msg
 titleBar =
-    wrappedRow
-        [ width fill
-        , centerY
-        , spacing 30
-        , height (scaled 6 |> round |> px)
-        , Background.color C.lightblue
-        ]
-        [ el [ centerX, Font.size (round <| scaled 3), Font.color C.darkblue ] (text "Luftfeuchtigkeit + Fenster öffnen?")
-        , el [ alignRight, Font.color C.darkblue ] (text "TODO Impressum")
+    header
+        [ classes [ flex, flex_auto, flex_row, justify_between, mw6 ] ]
+        [ div [ classes [ di ] ] [ text "Luftfeuchtigkeit + Fenster öffnen?" ]
+        , div [ classes [ di ] ] [ text "TODO Impressum" ]
         ]
 
 
-bridge : Element Msg
+bridge : Html Msg
 bridge =
-    row [ width fill, centerX ]
+    div []
         [ text "Bild Pfeil nach unten"
         , text "Fenster öffnen"
         ]
 
 
-results : Change -> Element Msg
+results : Change -> Html Msg
 results change =
     let
         notCalculated =
@@ -228,21 +211,17 @@ results change =
                 Drier ->
                     getsDrier
     in
-    row [ width fill, centerX ]
+    div []
         shownView
 
 
-absoluteValue : Maybe Float -> Element msg
+absoluteValue : Maybe Float -> Html msg
 absoluteValue value =
-    el [] (Maybe.withDefault none <| Maybe.map text <| Maybe.map (Round.round 2) value)
+    Maybe.withDefault (text "") <|
+        Maybe.map (\v -> span [] [ text <| Round.round 2 v ]) value
 
 
-scaledToLength : Int -> Element.Length
-scaledToLength length =
-    scaled length |> round |> px
-
-
-outsideInputs : Model -> Element Msg
+outsideInputs : Model -> Html Msg
 outsideInputs model =
     inputColumn
         { iconUrl = model.icons.outside
@@ -261,7 +240,7 @@ outsideInputs model =
         }
 
 
-insideInputs : Model -> Element Msg
+insideInputs : Model -> Html Msg
 insideInputs model =
     inputColumn
         { iconUrl = model.icons.inside
@@ -297,32 +276,27 @@ type alias InputConfig =
     }
 
 
-inputColumn : InputConfig -> Element Msg
+inputColumn : InputConfig -> Html Msg
 inputColumn c =
-    column [ width fill ]
-        [ image [ width <| scaledToLength 6, height <| scaledToLength 6, centerX ] { src = c.iconUrl, description = c.iconDescription }
+    section []
+        [ img [ src c.iconUrl, alt c.iconDescription ] []
         , numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText c.temperatureError
         , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText c.humidityError
         , absoluteValue c.calculatedAbsoluteHumidity
         ]
 
 
-numberInput : (String -> Msg) -> String -> String -> String -> Maybe String -> Element Msg
+numberInput : (String -> Msg) -> String -> String -> String -> Maybe String -> Html Msg
 numberInput onChange currentValue placeholderText label error =
     let
         errorText =
-            el [ Font.color C.red ] <|
-                Maybe.withDefault none <|
-                    Maybe.map text error
+            Maybe.withDefault (text "") <|
+                Maybe.map (\err -> span [] [ text err ]) error
     in
-    column []
+    div []
         [ errorText
-        , Input.text []
-            { onChange = onChange
-            , text = currentValue
-            , placeholder = Just <| Input.placeholder [] (text placeholderText)
-            , label = Input.labelRight [] (text label)
-            }
+        , input [ value currentValue, type_ "text", placeholder placeholderText, onInput onChange ]
+            []
         ]
 
 

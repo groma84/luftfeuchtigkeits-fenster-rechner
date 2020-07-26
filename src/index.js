@@ -1,4 +1,5 @@
-import './reset.css';
+// import './reset.css';
+import './tachyons.min.css';
 import './main.css';
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';

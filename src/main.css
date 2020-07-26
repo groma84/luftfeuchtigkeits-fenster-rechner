@@ -9,4 +9,6 @@
   height: inherit;
 }
 
-
+body {
+  font-size: 15px;
+}
