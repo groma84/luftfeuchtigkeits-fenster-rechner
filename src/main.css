@@ -9,6 +9,57 @@
   height: inherit;
 }
 
+:root {
+  --azure: hsla(214, 71%, 54%, 1);
+  --outer-space-crayola: hsla(164, 9%, 23%, 1);
+  --thistle: hsla(273, 17%, 74%, 1);
+  --light-gray: hsla(0, 1%, 84%, 1);
+  --international-orange-golden-gate-bridge: hsla(9, 59%, 46%, 1);
+}
+
 body {
   font-size: 15px;
+}
+
+
+
+
+.azure {
+  color: var(--azure);
+}
+
+.outer-space-crayola {
+  color: var(--outer-space-crayola);
+}
+
+.thistle {
+  color: var(--thistle);
+}
+
+.light-gray {
+  color: var(--light-gray);
+}
+
+.international-orange-golden-gate-bridge {
+  color: var(--international-orange-golden-gate-bridge);
+}
+
+.bg-azure {
+  background-color: var(--azure);
+}
+
+.bg-outer-space-crayola {
+  background-color: var(--outer-space-crayola);
+}
+
+.bg-thistle {
+  background-color: var(--thistle);
+}
+
+.bg-light-gray {
+  background-color: var(--light-gray);
+}
+
+.bg-international-orange-golden-gate-bridge {
+  background-color: var(--international-orange-golden-gate-bridge);
 }

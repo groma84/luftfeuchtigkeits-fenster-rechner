@@ -5,6 +5,7 @@ import Calc exposing (CalcResult, Change(..), calculateResult)
 import Html exposing (..)
 import Html.Attributes exposing (alt, placeholder, src, type_, value)
 import Html.Events exposing (onInput)
+import MyTachyons exposing (..)
 import Round
 import Tachyons exposing (classes, tachyons)
 import Tachyons.Classes exposing (..)
@@ -150,7 +151,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ classes [ sans_serif ] ]
+    div [ classes [ sans_serif, mw6 ] ]
         [ titleBar
         , div []
             [ outsideInputs model
@@ -164,7 +165,7 @@ view model =
 titleBar : Html Msg
 titleBar =
     header
-        [ classes [ flex, flex_auto, flex_row, justify_between, mw6 ] ]
+        [ classes [ flex, flex_auto, flex_row, justify_between, items_center, Tachyons.Classes.h2, white, bg_azure, pa2 ] ]
         [ div [ classes [ di ] ] [ text "Luftfeuchtigkeit + Fenster öffnen?" ]
         , div [ classes [ di ] ] [ text "TODO Impressum" ]
         ]
