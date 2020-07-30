@@ -40,6 +40,26 @@ type alias Icons =
     , opening_window : String
     , outside : String
     , wet : String
+    , left_right_arrow : String
+    , question_mark : String
+    }
+
+
+type alias InputConfig =
+    { iconUrl : String
+    , iconDescription : String
+    , rowLabel : String
+    , onInputTemperature : String -> Msg
+    , onInputHumidity : String -> Msg
+    , currentTemperatureInputValue : String
+    , currentHumidityInputValue : String
+    , temperaturePlaceholderText : String
+    , humidityPlaceholderText : String
+    , temperatureLabelText : String
+    , humidityLabelText : String
+    , temperatureError : Maybe String
+    , humidityError : Maybe String
+    , calculatedAbsoluteHumidity : Maybe Float
     }
 
 
@@ -157,8 +177,8 @@ view model =
             [ outsideInputs model
             , insideInputs model
             ]
-        , bridge
-        , results model.calcResult.change
+        , bridge model.icons
+        , results model.icons model.calcResult.change
         ]
 
 
@@ -171,32 +191,43 @@ titleBar =
         ]
 
 
-bridge : Html Msg
-bridge =
-    div []
-        [ text "Bild Pfeil nach unten"
-        , text "Fenster öffnen"
+bridge : Icons -> Html Msg
+bridge icons =
+    div [ classes [ flex, flex_row, justify_center ] ]
+        [ img
+            [ src icons.down_arrow
+            , alt "Pfeil nach unten"
+            , classes [ mw2 ]
+            ]
+            []
+        , img
+            [ src icons.opening_window
+            , alt "Offenes Fenster"
+            , classes [ mw2 ]
+            ]
+            []
         ]
 
 
-results : Change -> Html Msg
-results change =
+results : Icons -> Change -> Html Msg
+results icons change =
     let
+        iconAndText iconSrc iconAlt txt =
+            [ img [ src iconSrc, alt iconAlt, classes [ mw2 ] ] []
+            , span [ classes [ f4 ] ] [ text txt ]
+            ]
+
         notCalculated =
-            [ text "Not Calculated" ]
+            iconAndText icons.question_mark "Fragezeichen" "Berechnung noch nicht möglich"
 
         unchanged =
-            [ text "Unchanged" ]
+            iconAndText icons.left_right_arrow "Pfeil nach links und rechts" "Keine Veränderung"
 
         getsWetter =
-            [ text "Feuchter Bild"
-            , text "Feuchter Text"
-            ]
+            iconAndText icons.wet "Regenwolke" "Innen wird es feuchter"
 
         getsDrier =
-            [ text "Trockener Bild"
-            , text "Trockener Text"
-            ]
+            iconAndText icons.dry "Kaktus" "Innen wird es trockener"
 
         shownView =
             case change of
@@ -212,7 +243,7 @@ results change =
                 Drier ->
                     getsDrier
     in
-    div []
+    div [ classes [ flex, flex_row, justify_center, items_center, mv3 ] ]
         shownView
 
 
@@ -266,24 +297,6 @@ insideInputs model =
         }
 
 
-type alias InputConfig =
-    { iconUrl : String
-    , iconDescription : String
-    , rowLabel : String
-    , onInputTemperature : String -> Msg
-    , onInputHumidity : String -> Msg
-    , currentTemperatureInputValue : String
-    , currentHumidityInputValue : String
-    , temperaturePlaceholderText : String
-    , humidityPlaceholderText : String
-    , temperatureLabelText : String
-    , humidityLabelText : String
-    , temperatureError : Maybe String
-    , humidityError : Maybe String
-    , calculatedAbsoluteHumidity : Maybe Float
-    }
-
-
 inputRow : InputConfig -> Html Msg
 inputRow c =
     section [ classes [ flex, flex_row, flex_auto, ml1, mt1, mb3 ] ]
@@ -292,15 +305,15 @@ inputRow c =
             , span [] [ text c.rowLabel ]
             ]
         , div [ classes [ mh2 ] ]
-            [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText "°C" c.temperatureError
-            , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText "%" c.humidityError
+            [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText c.temperatureError
+            , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText c.humidityError
             , absoluteValue c.calculatedAbsoluteHumidity
             ]
         ]
 
 
-numberInput : (String -> Msg) -> String -> String -> String -> String -> Maybe String -> Html Msg
-numberInput onChange currentValue placeholderText label unitSymbol error =
+numberInput : (String -> Msg) -> String -> String -> String -> Maybe String -> Html Msg
+numberInput onChange currentValue placeholderText unitSymbol error =
     let
         errorText =
             let

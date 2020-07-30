@@ -10,6 +10,8 @@ import inside from '../images/inside.svg';
 import opening_window from '../images/opening_window.svg';
 import outside from '../images/outside.svg';
 import wet from '../images/wet.svg';
+import left_right_arrow from '../images/left_right_arrow.svg';
+import question_mark from '../images/question_mark.svg';
 
 Elm.Main.init({
   node: document.getElementById('root'),
@@ -20,6 +22,8 @@ Elm.Main.init({
     , opening_window
     , outside
     , wet
+    , left_right_arrow
+    , question_mark
   }
 });
 
