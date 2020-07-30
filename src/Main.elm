@@ -3,11 +3,11 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Calc exposing (CalcResult, Change(..), calculateResult)
 import Html exposing (..)
-import Html.Attributes exposing (alt, placeholder, src, type_, value)
+import Html.Attributes exposing (alt, maxlength, placeholder, src, type_, value)
 import Html.Events exposing (onInput)
 import MyTachyons exposing (..)
 import Round
-import Tachyons exposing (classes, tachyons)
+import Tachyons exposing (classes)
 import Tachyons.Classes exposing (..)
 
 
@@ -83,7 +83,7 @@ validateAndParseFloat input =
     in
     case parsedInput of
         Nothing ->
-            ( Just "Bitte nur Zahlen mit einem . als Dezimaltrenner eingeben", Nothing )
+            ( Just "Bitte Zahlen mit . als Dezimaltrenner eingeben", Nothing )
 
         Just num ->
             ( Nothing, Just num )
@@ -218,15 +218,20 @@ results change =
 
 absoluteValue : Maybe Float -> Html msg
 absoluteValue value =
+    let
+        el txt =
+            span [] [ text ("Absolute Feuchtigkeit: " ++ txt ++ " g/m³") ]
+    in
     Maybe.withDefault (text "") <|
-        Maybe.map (\v -> span [] [ text <| Round.round 2 v ]) value
+        Maybe.map (\v -> el <| Round.round 2 v) value
 
 
 outsideInputs : Model -> Html Msg
 outsideInputs model =
-    inputColumn
+    inputRow
         { iconUrl = model.icons.outside
         , iconDescription = "Icon showing outside vegetation"
+        , rowLabel = "außen"
         , onInputTemperature = OutsideTemperatureInput
         , onInputHumidity = OutsideHumidityInput
         , currentTemperatureInputValue = model.outsideTemperatureInput
@@ -243,9 +248,10 @@ outsideInputs model =
 
 insideInputs : Model -> Html Msg
 insideInputs model =
-    inputColumn
+    inputRow
         { iconUrl = model.icons.inside
         , iconDescription = "Icon showing a house"
+        , rowLabel = "innen"
         , onInputTemperature = InsideTemperatureInput
         , onInputHumidity = InsideHumidityInput
         , currentTemperatureInputValue = model.insideTemperatureInput
@@ -263,6 +269,7 @@ insideInputs model =
 type alias InputConfig =
     { iconUrl : String
     , iconDescription : String
+    , rowLabel : String
     , onInputTemperature : String -> Msg
     , onInputHumidity : String -> Msg
     , currentTemperatureInputValue : String
@@ -277,27 +284,36 @@ type alias InputConfig =
     }
 
 
-inputColumn : InputConfig -> Html Msg
-inputColumn c =
-    section []
-        [ img [ src c.iconUrl, alt c.iconDescription ] []
-        , numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText c.temperatureError
-        , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText c.humidityError
-        , absoluteValue c.calculatedAbsoluteHumidity
+inputRow : InputConfig -> Html Msg
+inputRow c =
+    section [ classes [ flex, flex_row, flex_auto, ml1, mt1, mb3 ] ]
+        [ div [ classes [ w_10, flex, flex_column, items_center ] ]
+            [ img [ src c.iconUrl, alt c.iconDescription ] []
+            , span [] [ text c.rowLabel ]
+            ]
+        , div [ classes [ mh2 ] ]
+            [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText "°C" c.temperatureError
+            , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText "%" c.humidityError
+            , absoluteValue c.calculatedAbsoluteHumidity
+            ]
         ]
 
 
-numberInput : (String -> Msg) -> String -> String -> String -> Maybe String -> Html Msg
-numberInput onChange currentValue placeholderText label error =
+numberInput : (String -> Msg) -> String -> String -> String -> String -> Maybe String -> Html Msg
+numberInput onChange currentValue placeholderText label unitSymbol error =
     let
         errorText =
+            let
+                el txt =
+                    span [ classes [ ml1, red, Tachyons.Classes.i, f7 ] ] [ text txt ]
+            in
             Maybe.withDefault (text "") <|
-                Maybe.map (\err -> span [] [ text err ]) error
+                Maybe.map el error
     in
-    div []
-        [ errorText
-        , input [ value currentValue, type_ "text", placeholder placeholderText, onInput onChange ]
-            []
+    div [ classes [ pv1 ] ]
+        [ input [ value currentValue, type_ "text", placeholder placeholderText, maxlength 10, onInput onChange ] []
+        , span [] [ text unitSymbol ]
+        , errorText
         ]
 
 
