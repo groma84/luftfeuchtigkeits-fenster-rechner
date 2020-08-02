@@ -39,7 +39,6 @@ type alias Icons =
     { down_arrow : String
     , dry : String
     , inside : String
-    , opening_window : String
     , outside : String
     , wet : String
     , left_right_arrow : String

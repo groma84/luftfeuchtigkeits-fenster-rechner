@@ -7,7 +7,6 @@ import * as serviceWorker from './serviceWorker';
 import down_arrow from '../images/down_arrow.svg';
 import dry from '../images/dry.svg';
 import inside from '../images/inside.svg';
-import opening_window from '../images/opening_window.svg';
 import outside from '../images/outside.svg';
 import wet from '../images/wet.svg';
 import left_right_arrow from '../images/left_right_arrow.svg';
@@ -19,7 +18,6 @@ Elm.Main.init({
     down_arrow
     , dry
     , inside
-    , opening_window
     , outside
     , wet
     , left_right_arrow
