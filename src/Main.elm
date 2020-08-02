@@ -10,6 +10,7 @@ import MyTachyons exposing (..)
 import Round
 import Tachyons exposing (classes)
 import Tachyons.Classes exposing (..)
+import Translation exposing (Language(..), Texts, english, german)
 
 
 
@@ -32,6 +33,8 @@ type alias Model =
     , calcResult : CalcResult
     , icons : Icons
     , showImpressum : Bool
+    , currentLanguage : Language
+    , texts : Texts
     }
 
 
@@ -43,6 +46,8 @@ type alias Icons =
     , wet : String
     , left_right_arrow : String
     , question_mark : String
+    , german : String
+    , english : String
     }
 
 
@@ -82,6 +87,8 @@ init icons =
       , calcResult = { change = NotCalculated, insideAbsoluteHumidity = Nothing, outsideAbsoluteHumidity = Nothing }
       , icons = icons
       , showImpressum = False
+      , currentLanguage = German
+      , texts = german
       }
     , Cmd.none
     )
@@ -97,17 +104,18 @@ type Msg
     | InsideTemperatureInput String
     | InsideHumidityInput String
     | ShowImpressum Bool
+    | SetLanguage Language
 
 
-validateAndParseFloat : String -> ( Maybe String, Maybe Float )
-validateAndParseFloat input =
+validateAndParseFloat : String -> String -> ( Maybe String, Maybe Float )
+validateAndParseFloat errorText input =
     let
         parsedInput =
             String.toFloat input
     in
     case parsedInput of
         Nothing ->
-            ( Just "Bitte Zahlen mit . als Dezimaltrenner eingeben", Nothing )
+            ( Just errorText, Nothing )
 
         Just num ->
             ( Nothing, Just num )
@@ -115,11 +123,15 @@ validateAndParseFloat input =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        validateAndParseFloat_ =
+            validateAndParseFloat model.texts.errorText
+    in
     case msg of
         OutsideTemperatureInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseFloat string
+                    validateAndParseFloat_ string
 
                 newModel =
                     { model | outsideTemperatureInput = string, outsideTemperatureError = error, outsideTemperature = parsed }
@@ -132,7 +144,7 @@ update msg model =
         OutsideHumidityInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseFloat string
+                    validateAndParseFloat_ string
 
                 newModel =
                     { model | outsideHumidityInput = string, outsideHumidityError = error, outsideHumidity = parsed }
@@ -145,7 +157,7 @@ update msg model =
         InsideTemperatureInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseFloat string
+                    validateAndParseFloat_ string
 
                 newModel =
                     { model | insideTemperatureInput = string, insideTemperatureError = error, insideTemperature = parsed }
@@ -158,7 +170,7 @@ update msg model =
         InsideHumidityInput string ->
             let
                 ( error, parsed ) =
-                    validateAndParseFloat string
+                    validateAndParseFloat_ string
 
                 newModel =
                     { model | insideHumidityInput = string, insideHumidityError = error, insideHumidity = parsed }
@@ -171,6 +183,18 @@ update msg model =
         ShowImpressum val ->
             ( { model | showImpressum = val }, Cmd.none )
 
+        SetLanguage language ->
+            let
+                texts =
+                    case language of
+                        German ->
+                            german
+
+                        English ->
+                            english
+            in
+            ( { model | currentLanguage = language, texts = texts }, Cmd.none )
+
 
 
 ---- VIEW ----
@@ -182,8 +206,8 @@ calculatorView model =
         [ outsideInputs model
         , insideInputs model
         ]
-    , bridge model.icons
-    , results model.icons model.calcResult.change
+    , bridge model.texts model.icons
+    , results model.texts model.icons model.calcResult.change
     ]
 
 
@@ -192,34 +216,54 @@ view model =
     let
         shownView =
             if model.showImpressum then
-                [ Impressum.view ]
+                [ Impressum.view model.currentLanguage ]
 
             else
                 calculatorView model
     in
     div [ classes [ sans_serif, mw6 ] ]
-        (List.concat [ [ titleBar model.showImpressum ], shownView ])
+        (List.concat [ [ titleBar model.texts model.icons model.showImpressum ], shownView ])
 
 
-titleBar : Bool -> Html Msg
-titleBar impressumShown =
+titleBar : Texts -> Icons -> Bool -> Html Msg
+titleBar texts icons impressumShown =
     let
         impressumButtonText =
             if impressumShown then
-                "Rechner"
+                texts.rechner
 
             else
-                "Impressum"
+                texts.impressum
+
+        flagButton toLanguage =
+            let
+                ( flagImage, altText ) =
+                    case toLanguage of
+                        German ->
+                            ( icons.german, "deutsch" )
+
+                        English ->
+                            ( icons.english, "english" )
+            in
+            button
+                [ classes [ pointer, pa0, ma0 ], type_ "button", onClick <| SetLanguage toLanguage ]
+                [ img [ classes [ w1 ], src flagImage, alt altText ] [] ]
     in
     header
         [ classes [ flex, flex_auto, flex_row, justify_between, items_center, Tachyons.Classes.h2, white, bg_azure, pa2 ] ]
-        [ div [ classes [ di ] ] [ text "Luftfeuchtigkeit + Fenster öffnen?" ]
-        , div [ classes [ di ] ] [ button [ classes [ pointer, w4 ], type_ "button", onClick <| ShowImpressum (not impressumShown), name impressumButtonText ] [ text impressumButtonText ] ]
+        [ div [ classes [ di ] ] [ text texts.title ]
+        , div [ classes [ di ] ]
+            [ flagButton German
+            , flagButton English
+            , button
+                [ classes [ pointer, w4 ], type_ "button", onClick <| ShowImpressum (not impressumShown), name impressumButtonText ]
+                [ text impressumButtonText ]
+            ]
         ]
 
 
-bridge : Icons -> Html Msg
-bridge icons =
+bridge : Texts -> Icons -> Html Msg
+bridge texts icons =
     div [ classes [ flex, flex_row, justify_center, items_center ] ]
         [ img
             [ src icons.down_arrow
@@ -227,7 +271,7 @@ bridge icons =
             , classes [ mw2 ]
             ]
             []
-        , span [ classes [ f6, ph2 ] ] [ text "Fenster öffnen" ]
+        , span [ classes [ f6, ph2 ] ] [ text texts.fensterOeffnen ]
         , img
             [ src icons.down_arrow
             , alt "Pfeil nach unten"
@@ -237,8 +281,8 @@ bridge icons =
         ]
 
 
-results : Icons -> Change -> Html Msg
-results icons change =
+results : Texts -> Icons -> Change -> Html Msg
+results texts icons change =
     let
         iconAndText iconSrc iconAlt txt =
             [ img [ src iconSrc, alt iconAlt, classes [ mw2 ] ] []
@@ -247,16 +291,16 @@ results icons change =
             ]
 
         notCalculated =
-            iconAndText icons.question_mark "Fragezeichen" "Berechnung noch nicht möglich"
+            iconAndText icons.question_mark "Fragezeichen" texts.berechnungNichtMoeglich
 
         unchanged =
-            iconAndText icons.left_right_arrow "Pfeil nach links und rechts" "Keine Veränderung"
+            iconAndText icons.left_right_arrow "Pfeil nach links und rechts" texts.keineVeraenderung
 
         getsWetter =
-            iconAndText icons.wet "Regenwolke" "Innen wird es feuchter"
+            iconAndText icons.wet "Regenwolke" texts.feuchter
 
         getsDrier =
-            iconAndText icons.dry "Kaktus" "Innen wird es trockener"
+            iconAndText icons.dry "Kaktus" texts.trockener
 
         shownView =
             case change of
@@ -276,11 +320,11 @@ results icons change =
         shownView
 
 
-absoluteValue : Maybe Float -> Html msg
-absoluteValue value =
+absoluteValue : String -> Maybe Float -> Html msg
+absoluteValue absoluteFeuchtigkeitText value =
     let
         el txt =
-            span [] [ text ("Absolute Feuchtigkeit: " ++ txt ++ " g/m³") ]
+            span [] [ text (absoluteFeuchtigkeitText ++ txt ++ " g/m³") ]
     in
     Maybe.withDefault (text "") <|
         Maybe.map (\v -> el <| Round.round 2 v) value
@@ -289,15 +333,16 @@ absoluteValue value =
 outsideInputs : Model -> Html Msg
 outsideInputs model =
     inputRow
+        model.texts.absoluteFeuchtigkeit
         { iconUrl = model.icons.outside
         , iconDescription = "Icon showing outside vegetation"
-        , rowLabel = "außen"
+        , rowLabel = model.texts.aussen
         , onInputTemperature = OutsideTemperatureInput
         , onInputHumidity = OutsideHumidityInput
         , currentTemperatureInputValue = model.outsideTemperatureInput
         , currentHumidityInputValue = model.outsideHumidityInput
-        , temperaturePlaceholderText = "Temperatur"
-        , humidityPlaceholderText = "Rel. Luftfeuchtigkeit"
+        , temperaturePlaceholderText = model.texts.temperatur
+        , humidityPlaceholderText = model.texts.relativeLuftfeuchtigkeit
         , temperatureLabelText = "°C"
         , humidityLabelText = "% RH"
         , temperatureError = model.outsideTemperatureError
@@ -310,15 +355,16 @@ outsideInputs model =
 insideInputs : Model -> Html Msg
 insideInputs model =
     inputRow
+        model.texts.absoluteFeuchtigkeit
         { iconUrl = model.icons.inside
         , iconDescription = "Icon showing a house"
-        , rowLabel = "innen"
+        , rowLabel = model.texts.innen
         , onInputTemperature = InsideTemperatureInput
         , onInputHumidity = InsideHumidityInput
         , currentTemperatureInputValue = model.insideTemperatureInput
         , currentHumidityInputValue = model.insideHumidityInput
-        , temperaturePlaceholderText = "Temperatur"
-        , humidityPlaceholderText = "Rel. Luftfeuchtigkeit"
+        , temperaturePlaceholderText = model.texts.temperatur
+        , humidityPlaceholderText = model.texts.relativeLuftfeuchtigkeit
         , temperatureLabelText = "°C"
         , humidityLabelText = "% RH"
         , temperatureError = model.insideTemperatureError
@@ -328,8 +374,8 @@ insideInputs model =
         }
 
 
-inputRow : InputConfig -> Html Msg
-inputRow c =
+inputRow : String -> InputConfig -> Html Msg
+inputRow absoluteFeuchtigkeitText c =
     section [ classes [ flex, flex_row, flex_auto, ml1, mt1, mb3 ] ]
         [ div [ classes [ w_10, flex, flex_column, items_center ] ]
             [ img [ src c.iconUrl, alt c.iconDescription ] []
@@ -338,7 +384,7 @@ inputRow c =
         , div [ classes [ mh2 ] ]
             [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText "-30" "0.1" c.autofocusFirstInput c.temperatureError
             , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText "0" "1" c.autofocusFirstInput c.humidityError
-            , absoluteValue c.calculatedAbsoluteHumidity
+            , absoluteValue absoluteFeuchtigkeitText c.calculatedAbsoluteHumidity
             ]
         ]
 
