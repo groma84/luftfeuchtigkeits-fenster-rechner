@@ -3,7 +3,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Calc exposing (CalcResult, Change(..), calculateResult)
 import Html exposing (..)
-import Html.Attributes exposing (alt, maxlength, placeholder, src, type_, value)
+import Html.Attributes exposing (alt, maxlength, placeholder, required, src, step, type_, value)
 import Html.Events exposing (onInput)
 import MyTachyons exposing (..)
 import Round
@@ -305,26 +305,38 @@ inputRow c =
             , span [] [ text c.rowLabel ]
             ]
         , div [ classes [ mh2 ] ]
-            [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText c.temperatureError
-            , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText c.humidityError
+            [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText "-30" "0.1" c.temperatureError
+            , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText "0" "1" c.humidityError
             , absoluteValue c.calculatedAbsoluteHumidity
             ]
         ]
 
 
-numberInput : (String -> Msg) -> String -> String -> String -> Maybe String -> Html Msg
-numberInput onChange currentValue placeholderText unitSymbol error =
+numberInput : (String -> Msg) -> String -> String -> String -> String -> String -> Maybe String -> Html Msg
+numberInput onChange currentValue placeholderText unitSymbol minValue stepValue error =
     let
         errorText =
             let
                 el txt =
-                    span [ classes [ ml1, red, Tachyons.Classes.i, f7 ] ] [ text txt ]
+                    div [ classes [ mt1, red, Tachyons.Classes.i, f7 ] ] [ text txt ]
             in
             Maybe.withDefault (text "") <|
                 Maybe.map el error
     in
     div [ classes [ pv1 ] ]
-        [ input [ value currentValue, type_ "text", placeholder placeholderText, maxlength 10, onInput onChange ] []
+        [ input
+            [ classes [ w4 ]
+            , value currentValue
+            , type_ "number"
+            , required True
+            , Html.Attributes.min minValue
+            , Html.Attributes.max "100"
+            , step stepValue
+            , placeholder placeholderText
+            , maxlength 10
+            , onInput onChange
+            ]
+            []
         , span [] [ text unitSymbol ]
         , errorText
         ]
