@@ -202,7 +202,7 @@ update msg model =
 
 calculatorView : Model -> List (Html Msg)
 calculatorView model =
-    [ div []
+    [ form []
         [ outsideInputs model
         , insideInputs model
         ]
