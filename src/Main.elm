@@ -3,8 +3,9 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Calc exposing (CalcResult, Change(..), calculateResult)
 import Html exposing (..)
-import Html.Attributes exposing (alt, maxlength, placeholder, required, src, step, type_, value)
-import Html.Events exposing (onInput)
+import Html.Attributes exposing (alt, autofocus, maxlength, name, placeholder, required, src, step, type_, value)
+import Html.Events exposing (onClick, onInput)
+import Impressum
 import MyTachyons exposing (..)
 import Round
 import Tachyons exposing (classes)
@@ -30,6 +31,7 @@ type alias Model =
     , insideHumidity : Maybe Float
     , calcResult : CalcResult
     , icons : Icons
+    , showImpressum : Bool
     }
 
 
@@ -60,6 +62,7 @@ type alias InputConfig =
     , temperatureError : Maybe String
     , humidityError : Maybe String
     , calculatedAbsoluteHumidity : Maybe Float
+    , autofocusFirstInput : Bool
     }
 
 
@@ -79,6 +82,7 @@ init icons =
       , insideHumidity = Nothing
       , calcResult = { change = NotCalculated, insideAbsoluteHumidity = Nothing, outsideAbsoluteHumidity = Nothing }
       , icons = icons
+      , showImpressum = False
       }
     , Cmd.none
     )
@@ -93,6 +97,7 @@ type Msg
     | OutsideHumidityInput String
     | InsideTemperatureInput String
     | InsideHumidityInput String
+    | ShowImpressum Bool
 
 
 validateAndParseFloat : String -> ( Maybe String, Maybe Float )
@@ -164,45 +169,69 @@ update msg model =
             in
             ( { newModel | calcResult = calculatedResult }, Cmd.none )
 
+        ShowImpressum val ->
+            ( { model | showImpressum = val }, Cmd.none )
+
 
 
 ---- VIEW ----
 
 
+calculatorView : Model -> List (Html Msg)
+calculatorView model =
+    [ div []
+        [ outsideInputs model
+        , insideInputs model
+        ]
+    , bridge model.icons
+    , results model.icons model.calcResult.change
+    ]
+
+
 view : Model -> Html Msg
 view model =
+    let
+        shownView =
+            if model.showImpressum then
+                [ Impressum.view ]
+
+            else
+                calculatorView model
+    in
     div [ classes [ sans_serif, mw6 ] ]
-        [ titleBar
-        , div []
-            [ outsideInputs model
-            , insideInputs model
-            ]
-        , bridge model.icons
-        , results model.icons model.calcResult.change
-        ]
+        (List.concat [ [ titleBar model.showImpressum ], shownView ])
 
 
-titleBar : Html Msg
-titleBar =
+titleBar : Bool -> Html Msg
+titleBar impressumShown =
+    let
+        impressumButtonText =
+            if impressumShown then
+                "Rechner"
+
+            else
+                "Impressum"
+    in
     header
         [ classes [ flex, flex_auto, flex_row, justify_between, items_center, Tachyons.Classes.h2, white, bg_azure, pa2 ] ]
         [ div [ classes [ di ] ] [ text "Luftfeuchtigkeit + Fenster öffnen?" ]
-        , div [ classes [ di ] ] [ text "TODO Impressum" ]
+        , div [ classes [ di ] ] [ button [ classes [ pointer, w4 ], type_ "button", onClick <| ShowImpressum (not impressumShown), name impressumButtonText ] [ text impressumButtonText ] ]
         ]
 
 
 bridge : Icons -> Html Msg
 bridge icons =
-    div [ classes [ flex, flex_row, justify_center ] ]
+    div [ classes [ flex, flex_row, justify_center, items_center ] ]
         [ img
             [ src icons.down_arrow
             , alt "Pfeil nach unten"
             , classes [ mw2 ]
             ]
             []
+        , span [ classes [ f6, ph2 ] ] [ text "Fenster öffnen" ]
         , img
-            [ src icons.opening_window
-            , alt "Offenes Fenster"
+            [ src icons.down_arrow
+            , alt "Pfeil nach unten"
             , classes [ mw2 ]
             ]
             []
@@ -215,6 +244,7 @@ results icons change =
         iconAndText iconSrc iconAlt txt =
             [ img [ src iconSrc, alt iconAlt, classes [ mw2 ] ] []
             , span [ classes [ f4 ] ] [ text txt ]
+            , img [ src iconSrc, alt iconAlt, classes [ mw2 ] ] []
             ]
 
         notCalculated =
@@ -274,6 +304,7 @@ outsideInputs model =
         , temperatureError = model.outsideTemperatureError
         , humidityError = model.outsideHumidityError
         , calculatedAbsoluteHumidity = model.calcResult.outsideAbsoluteHumidity
+        , autofocusFirstInput = True
         }
 
 
@@ -294,6 +325,7 @@ insideInputs model =
         , temperatureError = model.insideTemperatureError
         , humidityError = model.insideHumidityError
         , calculatedAbsoluteHumidity = model.calcResult.insideAbsoluteHumidity
+        , autofocusFirstInput = False
         }
 
 
@@ -305,15 +337,15 @@ inputRow c =
             , span [] [ text c.rowLabel ]
             ]
         , div [ classes [ mh2 ] ]
-            [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText "-30" "0.1" c.temperatureError
-            , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText "0" "1" c.humidityError
+            [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText "-30" "0.1" c.autofocusFirstInput c.temperatureError
+            , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText "0" "1" c.autofocusFirstInput c.humidityError
             , absoluteValue c.calculatedAbsoluteHumidity
             ]
         ]
 
 
-numberInput : (String -> Msg) -> String -> String -> String -> String -> String -> Maybe String -> Html Msg
-numberInput onChange currentValue placeholderText unitSymbol minValue stepValue error =
+numberInput : (String -> Msg) -> String -> String -> String -> String -> String -> Bool -> Maybe String -> Html Msg
+numberInput onChange currentValue placeholderText unitSymbol minValue stepValue autofocused error =
     let
         errorText =
             let
@@ -327,6 +359,7 @@ numberInput onChange currentValue placeholderText unitSymbol minValue stepValue 
         [ input
             [ classes [ w4 ]
             , value currentValue
+            , autofocus autofocused
             , type_ "number"
             , required True
             , Html.Attributes.min minValue
