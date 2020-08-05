@@ -3,7 +3,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Calc exposing (CalcResult, Change(..), calculateResult)
 import Html exposing (..)
-import Html.Attributes exposing (alt, autofocus, maxlength, name, placeholder, required, src, step, type_, value)
+import Html.Attributes exposing (alt, autofocus, maxlength, name, placeholder, required, src, step, style, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Impressum
 import MyTachyons exposing (..)
@@ -222,12 +222,24 @@ view model =
                 calculatorView model
     in
     div [ classes [ sans_serif, mw6 ] ]
-        (List.concat [ [ titleBar model.texts model.icons model.showImpressum ], shownView ])
+        (List.concat [ [ titleBar model.texts model.icons model.currentLanguage model.showImpressum ], shownView ])
 
 
-titleBar : Texts -> Icons -> Bool -> Html Msg
-titleBar texts icons impressumShown =
+titleBar : Texts -> Icons -> Language -> Bool -> Html Msg
+titleBar texts icons language impressumShown =
     let
+        buttonClasses additionalClasses =
+            classes
+                (List.concat
+                    [ [ pointer
+                      , white
+                      , bn
+                      , dim
+                      ]
+                    , additionalClasses
+                    ]
+                )
+
         impressumButtonText =
             if impressumShown then
                 texts.rechner
@@ -235,28 +247,27 @@ titleBar texts icons impressumShown =
             else
                 texts.impressum
 
-        flagButton toLanguage =
+        flagButton currentLanguage =
             let
-                ( flagImage, altText ) =
-                    case toLanguage of
-                        German ->
-                            ( icons.german, "deutsch" )
-
+                ( toLanguage, flagImage, altText ) =
+                    case currentLanguage of
                         English ->
-                            ( icons.english, "english" )
+                            ( German, icons.german, "deutsch" )
+
+                        German ->
+                            ( English, icons.english, "english" )
             in
             button
-                [ classes [ pointer, pa0, ma0 ], type_ "button", onClick <| SetLanguage toLanguage ]
+                [ buttonClasses [ pa0, ma0, bg_transparent, Tachyons.Classes.h1 ], style "" "", type_ "button", onClick <| SetLanguage toLanguage ]
                 [ img [ classes [ w1 ], src flagImage, alt altText ] [] ]
     in
     header
-        [ classes [ flex, flex_auto, flex_row, justify_between, items_center, Tachyons.Classes.h2, white, bg_azure, pa2 ] ]
-        [ div [ classes [ di ] ] [ text texts.title ]
-        , div [ classes [ di ] ]
-            [ flagButton German
-            , flagButton English
+        [ classes [ flex, flex_auto, flex_row, justify_between, items_center, Tachyons.Classes.h2, white, bg_azure, pa1 ] ]
+        [ div [ classes [] ] [ text texts.title ]
+        , div [ classes [ Tachyons.Classes.h1 ] ]
+            [ flagButton language
             , button
-                [ classes [ pointer, w4 ], type_ "button", onClick <| ShowImpressum (not impressumShown), name impressumButtonText ]
+                [ buttonClasses [ bg_international_orange_golden_gate_bridge, w4, ml1, Tachyons.Classes.h1, v_top ], type_ "button", onClick <| ShowImpressum (not impressumShown), name impressumButtonText ]
                 [ text impressumButtonText ]
             ]
         ]
