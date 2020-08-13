@@ -11,6 +11,7 @@ import Round
 import Tachyons exposing (classes)
 import Tachyons.Classes exposing (..)
 import Translation exposing (Language(..), Texts, english, german)
+import Tuple exposing (first)
 
 
 
@@ -192,8 +193,27 @@ update msg model =
 
                         English ->
                             english
+
+                updatedModel =
+                    { model | currentLanguage = language, texts = texts }
+
+                modelWithUpdatedErrorTexts =
+                    let
+                        updateTextIfError err msg_ previousModel =
+                            case err of
+                                Nothing ->
+                                    previousModel
+
+                                Just _ ->
+                                    update msg_ previousModel |> first
+                    in
+                    updatedModel
+                        |> updateTextIfError model.outsideTemperatureError (OutsideTemperatureInput model.outsideTemperatureInput)
+                        |> updateTextIfError model.outsideHumidityError (OutsideHumidityInput model.outsideHumidityInput)
+                        |> updateTextIfError model.insideTemperatureError (InsideTemperatureInput model.insideTemperatureInput)
+                        |> updateTextIfError model.insideHumidityError (InsideHumidityInput model.insideHumidityInput)
             in
-            ( { model | currentLanguage = language, texts = texts }, Cmd.none )
+            ( modelWithUpdatedErrorTexts, Cmd.none )
 
 
 
@@ -335,9 +355,12 @@ absoluteValue : String -> Maybe Float -> Html msg
 absoluteValue absoluteFeuchtigkeitText value =
     let
         el txt =
-            span [] [ text (absoluteFeuchtigkeitText ++ txt ++ " g/m³") ]
+            div []
+                [ span [] [ text (absoluteFeuchtigkeitText ++ ": ") ]
+                , span [] [ text (txt ++ " g/m³") ]
+                ]
     in
-    Maybe.withDefault (text "") <|
+    Maybe.withDefault (el "N/A") <|
         Maybe.map (\v -> el <| Round.round 2 v) value
 
 
@@ -392,10 +415,10 @@ inputRow absoluteFeuchtigkeitText c =
             [ img [ src c.iconUrl, alt c.iconDescription ] []
             , span [] [ text c.rowLabel ]
             ]
-        , div [ classes [ mh2 ] ]
+        , div [ classes [ mh2, w5 ] ]
             [ numberInput c.onInputTemperature c.currentTemperatureInputValue c.temperaturePlaceholderText c.temperatureLabelText "-30" "0.1" c.autofocusFirstInput c.temperatureError
             , numberInput c.onInputHumidity c.currentHumidityInputValue c.humidityPlaceholderText c.humidityLabelText "0" "1" c.autofocusFirstInput c.humidityError
-            , absoluteValue absoluteFeuchtigkeitText c.calculatedAbsoluteHumidity
+            , div [ classes [ pv1 ] ] [ absoluteValue absoluteFeuchtigkeitText c.calculatedAbsoluteHumidity ]
             ]
         ]
 
